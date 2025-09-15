@@ -1,0 +1,149 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+
+#----------------------------------------------------------------------------
+# General settings
+#----------------------------------------------------------------------------
+
+# Vagrant VMs
+cp_array = [ "k8s-cp"]                             # k8s control plane
+node_array = [ "k8s-w1", "k8s-w2", "k8s-w3"]       # k8s worker nodes
+
+# Vagrant box to use
+#vagrant_box_image = "cg5labs/rocky9_latest"
+vagrant_box_image = "generic/rocky9"
+#vagrant_box_image = "cloud-image/ubuntu-22.04"
+
+#----------------------------------------------------------------------------
+# Customizations
+#----------------------------------------------------------------------------
+
+
+# Sizing (optional)
+vm_cpus   = 4
+vm_memory = 8192
+storage_pool_name = "vm-storage"
+
+#----------------------------------------------------------------------------
+# Setup Vagrant environment
+#----------------------------------------------------------------------------
+
+
+# set libvirt (qemu-kvm) as default provider on Linux
+if RUBY_PLATFORM.downcase.include?("linux")
+    ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+end
+
+
+CMD_FILE="./provisioning/ansible_roles_setup.sh"
+RC = system(CMD_FILE) 
+if RC == false
+    puts "==> File not found: #{CMD_FILE}"
+    exit
+end
+
+# set libvirt (qemu-kvm) as default provider on Linux
+if RUBY_PLATFORM.downcase.include?("linux")
+    ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+end
+    
+
+#----------------------------------------------------------------------------
+# Vagrant VM definition
+#----------------------------------------------------------------------------
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = vagrant_box_image
+  config.ssh.insert_key = true
+  config.ssh.username = "vagrant"
+  config.vm.synced_folder 'provisioning', '/vagrant', disabled: false
+
+  cp_array.each do |srv|
+    config.vm.define "#{srv}" do |cp|
+      cp.vm.hostname = "k8s-cp"
+
+      # kube-API server interface, refactor for HA/VIP
+      # this interface is used for Ansible ssh see provisioning/inventory)
+      if srv == "k8s-cp"
+        cp.vm.network "private_network", ip: "192.168.33.33"
+        cp.vm.hostname = "k8s-cp"
+      end
+
+      # qemu-kvm settings
+      cp.vm.provider :libvirt do |libvirt|
+
+        libvirt.driver = 'kvm'
+        # local connection via Unix-socket
+        libvirt.username = 'root'
+        libvirt.storage_pool_name = "#{storage_pool_name}"
+        libvirt.storage :file, :size => '10G', :path => "cp-disk2.qcow2"
+
+        if (defined?(vm_cpus))
+          libvirt.cpus = vm_cpus
+        end
+
+        if (defined?(vm_memory))
+          libvirt.memory = vm_memory
+        end
+      # qemu
+
+      end
+        cp.vm.provision "shell", path: "provisioning/base_preinstall.sh"
+        cp.vm.provision "ansible" do |ansible|
+          ansible.playbook = "provisioning/k8s-cluster.yml"
+          ansible.inventory_path = "provisioning/inventory.yml"
+          ansible.sudo = true
+        end
+    end
+  end
+
+
+  node_array.each do |srv|
+    config.vm.define srv do |node|
+      node.vm.hostname = srv
+
+      # this interface is used for Ansible ssh see provisioning/inventory)
+      if srv == "k8s-w1"
+        node.vm.network "private_network", ip: "192.168.33.34"
+        node.vm.hostname = "k8s-w1"
+      elsif srv == "k8s-w2"
+        node.vm.network "private_network", ip: "192.168.33.35"
+        node.vm.hostname = "k8s-w2"
+      elsif srv == "k8s-w3"
+        node.vm.network "private_network", ip: "192.168.33.36"
+        node.vm.hostname = "k8s-w3"
+      end
+
+        # qemu-kvm settings
+        node.vm.provider :libvirt do |libvirt|
+            libvirt.driver = 'kvm'
+            # local connection via Unix-socket
+            libvirt.username = 'root'
+            libvirt.storage_pool_name  = "#{storage_pool_name}"
+            libvirt.storage :file, :size => '100G', :path => "#{srv}-disk2.qcow2"
+
+        if (defined?(vm_cpus))
+          libvirt.cpus = vm_cpus
+        end
+
+        if (defined?(vm_memory))
+          libvirt.memory = vm_memory
+        end
+      # qemu
+      end
+
+      node.vm.provision "shell", path: "provisioning/base_nodes.sh"
+      node.vm.provision "ansible" do |ansible|
+        ansible.playbook = "provisioning/k8s-cluster.yml"
+        ansible.inventory_path = "provisioning/inventory.yml"
+        ansible.sudo = true
+      end
+    end
+  # node
+  end
+
+# config
+end
