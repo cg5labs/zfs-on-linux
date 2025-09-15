@@ -1,0 +1,91 @@
+---
+
+- hosts: dev
+  gather_facts: yes
+
+  vars_files:
+    - vars/main.yml
+
+- name: Add OpenZFS repository and GPG key on EL9 Linux distributions, install ZFS packages
+  hosts: all
+  become: yes
+  tasks:
+
+    - name: Install EPEL repository
+      package:
+        name: epel-release
+        state: present
+
+    - name: Download OpenZFS signing GPG key
+      get_url:
+        url: "https://raw.githubusercontent.com/zfsonlinux/zfsonlinux.github.com/master/zfs-release/RPM-GPG-KEY-openzfs-key2"
+        dest: /tmp/RPM-GPG-KEY-openzfs-key2
+        mode: '0644'
+
+    - name: Import OpenZFS GPG key
+      command: rpm --import /tmp/RPM-GPG-KEY-openzfs-key2
+      become: true
+
+    - name: Install zfs-release RPM to get repo and key
+      ansible.builtin.package:
+        name: "{{ zfs_release_rpm_url }}"
+        state: present
+      vars:
+        zfs_release_rpm_url: "https://zfsonlinux.org/epel/zfs-release-2-3.el{{ rpm_dist_tag }}.noarch.rpm"
+        rpm_dist_tag: "{{ ansible_distribution_major_version }}"
+
+    - name: Download OpenZFS packages to local tmp
+      get_url:
+        url: "http://download.zfsonlinux.org/epel/{{ ansible_facts['distribution_major_version'] }}/{{ ansible_facts['architecture'] }}/{{ pkg }}-2.2.8-1.el{{ ansible_facts['distribution_major_version'] }}.{{ ansible_facts['architecture'] }}.rpm"
+        dest: /tmp/{{ pkg }}-2.2.8-1.el{{ ansible_facts['distribution_major_version'] }}.{{ ansible_facts['architecture'] }}.rpm
+        mode: '0644'
+      with_items:
+        - libzfs5
+        - libzpool5
+        - libnvpair3
+        - libuutil3
+        - zfs
+      loop_control:
+        loop_var: pkg
+
+    - name: Install downloaded ZFS packages
+      package:
+        name: /tmp/{{ pkg }}-2.2.8-1.el{{ ansible_facts['distribution_major_version'] }}.{{ ansible_facts['architecture'] }}.rpm
+        state: present
+      with_items:
+        - libnvpair3
+        - libuutil3
+        - libzfs5
+        - libzpool5
+        - zfs
+      loop_control:
+        loop_var: pkg
+
+    - name: Create ZFS pool "zfspv-pool" on /dev/vdb
+      command: zpool create -f zfspv-pool /dev/vdb
+      args:
+        creates: /zfspv-pool
+      become: true
+
+    - name: Verify ZFS pool
+      command: zpool list
+      register: zpool_list
+      become: true
+
+    - name: Set ZFS pool attributes
+      command: zfs set {{ attr }} zfspv-pool
+      become: true
+      with_items:
+        - "compression=on"
+        - "atime=off"
+        - "dedup=on"
+      loop_control:
+        loop_var: attr
+
+    - name: Display ZFS attributes
+      command: zfs get all
+      become: true
+      register: zfs_get_all
+
+    - debug:
+        var: zfs_get_all.stdout_lines

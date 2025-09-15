@@ -1,0 +1,93 @@
+# -*- mode: ruby -*-
+# vi: set ft=ruby :
+
+VAGRANTFILE_API_VERSION = "2"
+
+
+#----------------------------------------------------------------------------
+# General settings
+#----------------------------------------------------------------------------
+
+# VM name
+srv = "dev"
+
+# Vagrant box to use
+#vagrant_box_image = "bento/rockylinux-9"
+vagrant_box_image = "generic/rocky9"
+#vagrant_box_image = "cg5labs/rocky9_latest"
+
+#----------------------------------------------------------------------------
+# Customizations
+#----------------------------------------------------------------------------
+
+# Sizing (optional)
+vm_cpus   = 4
+vm_memory = 16384
+
+
+#----------------------------------------------------------------------------
+# Setup Vagrant environment
+#----------------------------------------------------------------------------
+
+
+# set libvirt (qemu-kvm) as default provider on Linux
+if RUBY_PLATFORM.downcase.include?("linux")
+    ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+end
+
+CMD_FILE="./provisioning/ansible_roles_setup.sh"
+RC = system(CMD_FILE) 
+if RC == false
+    puts "==> File not found: #{CMD_FILE}"
+    exit
+end
+
+#----------------------------------------------------------------------------
+# Vagrant VM definition
+#----------------------------------------------------------------------------
+
+Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
+  config.vm.box = vagrant_box_image
+  config.ssh.insert_key = true
+  config.ssh.username = "vagrant"
+
+  config.vm.define srv do |v|
+    v.vm.hostname = "#{srv}"
+    # this interface is used for Ansible ssh see provisioning/inventory)
+    v.vm.network "private_network", ip: "192.168.33.33"
+    #v.vm.network "private_network", ip: "192.168.56.33"
+  end
+
+  # qemu-kvm settings
+  config.vm.provider "libvirt" do |libvirt|
+
+    libvirt.driver = 'kvm'
+    # local connection via Unix-socket
+    #libvirt.connect_via_ssh = false
+    libvirt.username = 'root'
+    libvirt.storage_pool_name = 'vm-storage'
+
+    if (defined?(vm_cpus))
+      libvirt.cpus = vm_cpus
+    end
+
+    if (defined?(vm_memory))
+      libvirt.memory = vm_memory
+    end
+
+    # create second vdisk
+    libvirt.storage :file, :size => '10G', :path => "#{srv}-disk2.qcow2"
+
+  end 
+
+  # Shell provisioner
+  #config.vm.provision "shell", path: "provisioning/zfs-on-el9.sh"
+
+  # Ansible provisioner
+  config.vm.provision "ansible" do |ansible|
+    ansible.playbook = "provisioning/zfs-on-linux.yml"
+    ansible.inventory_path = "provisioning/inventory"
+    ansible.become = true
+  end
+
+end
