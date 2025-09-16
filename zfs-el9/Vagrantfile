@@ -12,8 +12,11 @@ VAGRANTFILE_API_VERSION = "2"
 srv = "dev"
 
 # Vagrant box to use
-#vagrant_box_image = "bento/rockylinux-9"
-vagrant_box_image = "generic/rocky9"
+#vagrant_box_image = "bento/fedora-42"
+vagrant_box_image = "bento/almalinux-9"
+#vagrant_box_image = "generic/rocky9"  # OK
+#vagrant_box_image = "generic/oracle9" # OK
+#vagrant_box_image = "almalinux/9"     # NOK
 #vagrant_box_image = "cg5labs/rocky9_latest"
 
 #----------------------------------------------------------------------------
@@ -23,6 +26,7 @@ vagrant_box_image = "generic/rocky9"
 # Sizing (optional)
 vm_cpus   = 4
 vm_memory = 16384
+storage_pool_name = "default"
 
 
 #----------------------------------------------------------------------------
@@ -65,7 +69,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     # local connection via Unix-socket
     #libvirt.connect_via_ssh = false
     libvirt.username = 'root'
-    libvirt.storage_pool_name = 'vm-storage'
+    libvirt.storage_pool_name = "#{storage_pool_name}"
 
     if (defined?(vm_cpus))
       libvirt.cpus = vm_cpus

@@ -3,7 +3,7 @@ Project for evaluation of ZFS features.
 
 Features
 
-* VM-based deployment using Rocky Linux 9 with second disk configured as ZFS pool
+* VM-based deployment using Rocky Linux 9  / Alma Linux 9 with second disk configured as ZFS pool
 * K8s-based deployment using Rocky Linux 9 K8s nodes with ZFS pool. OpenEBS CSI with localpv ZFS support.
 
 ## Tech stack

@@ -1,19 +1,22 @@
 ---
-
-- hosts: dev
-  gather_facts: yes
-
-  vars_files:
-    - vars/main.yml
-
 - name: Add OpenZFS repository and GPG key on EL9 Linux distributions, install ZFS packages
   hosts: all
   become: yes
+  gather_facts: yes
+  vars:
+    ntp_timezone: Asia/Singapore
+    zfs_pkg_version: "2.2.8"
+
   tasks:
 
     - name: Install EPEL repository
       package:
         name: epel-release
+        state: present
+
+    - name: Install kernel-devel package
+      package:
+        name: kernel-devel
         state: present
 
     - name: Download OpenZFS signing GPG key
@@ -36,8 +39,8 @@
 
     - name: Download OpenZFS packages to local tmp
       get_url:
-        url: "http://download.zfsonlinux.org/epel/{{ ansible_facts['distribution_major_version'] }}/{{ ansible_facts['architecture'] }}/{{ pkg }}-2.2.8-1.el{{ ansible_facts['distribution_major_version'] }}.{{ ansible_facts['architecture'] }}.rpm"
-        dest: /tmp/{{ pkg }}-2.2.8-1.el{{ ansible_facts['distribution_major_version'] }}.{{ ansible_facts['architecture'] }}.rpm
+        url: "http://download.zfsonlinux.org/epel/{{ ansible_facts['distribution_major_version'] }}/{{ ansible_facts['architecture'] }}/{{ pkg }}-{{ zfs_pkg_version }}-1.el{{ ansible_facts['distribution_major_version'] }}.{{ ansible_facts['architecture'] }}.rpm"
+        dest: /tmp/{{ pkg }}-{{ zfs_pkg_version }}-1.el{{ ansible_facts['distribution_major_version'] }}.{{ ansible_facts['architecture'] }}.rpm
         mode: '0644'
       with_items:
         - libzfs5
@@ -48,9 +51,28 @@
       loop_control:
         loop_var: pkg
 
+    - name: Download OpenZFS noarch packages to local tmp
+      get_url:
+        url: "http://download.zfsonlinux.org/epel/{{ ansible_facts['distribution_major_version'] }}/{{ ansible_facts['architecture'] }}/{{ pkg }}-{{ zfs_pkg_version }}-1.el{{ ansible_facts['distribution_major_version'] }}.noarch.rpm"
+        dest: /tmp/{{ pkg }}-{{ zfs_pkg_version }}-1.el{{ ansible_facts['distribution_major_version'] }}.noarch.rpm
+        mode: '0644'
+      with_items:
+        - zfs-dkms
+      loop_control:
+        loop_var: pkg
+
+    - name: Install downloaded ZFS noarch packages
+      package:
+        name: /tmp/{{ pkg }}-{{ zfs_pkg_version }}-1.el{{ ansible_facts['distribution_major_version'] }}.noarch.rpm
+        state: present
+      with_items:
+        - zfs-dkms
+      loop_control:
+        loop_var: pkg
+
     - name: Install downloaded ZFS packages
       package:
-        name: /tmp/{{ pkg }}-2.2.8-1.el{{ ansible_facts['distribution_major_version'] }}.{{ ansible_facts['architecture'] }}.rpm
+        name: /tmp/{{ pkg }}-{{ zfs_pkg_version }}-1.el{{ ansible_facts['distribution_major_version'] }}.{{ ansible_facts['architecture'] }}.rpm
         state: present
       with_items:
         - libnvpair3
@@ -60,6 +82,12 @@
         - zfs
       loop_control:
         loop_var: pkg
+
+    - name: Add the zfs module
+      modprobe:
+        name: zfs
+        state: present
+
 
     - name: Create ZFS pool "zfspv-pool" on /dev/vdb
       command: zpool create -f zfspv-pool /dev/vdb
