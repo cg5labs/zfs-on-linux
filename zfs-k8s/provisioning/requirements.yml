@@ -1,5 +1,4 @@
 ---
-- src: hwwilliams.zfs
 - src: geerlingguy.ntp
 - src: geerlingguy.containerd
 - src: geerlingguy.kubernetes

@@ -27,6 +27,7 @@ vagrant_box_image = "bento/almalinux-9"
 vm_cpus   = 4
 vm_memory = 16384
 storage_pool_name = "default"
+disk2_size = "10G"
 
 
 #----------------------------------------------------------------------------
@@ -80,7 +81,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     # create second vdisk
-    libvirt.storage :file, :size => '10G', :path => "#{srv}-disk2.qcow2"
+    libvirt.storage :file, :size => "#{disk2_size}", :path => "#{srv}-disk2.qcow2"
 
   end 
 
