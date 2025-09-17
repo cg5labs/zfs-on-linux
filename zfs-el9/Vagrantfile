@@ -27,7 +27,8 @@ vagrant_box_image = "bento/almalinux-9"
 vm_cpus   = 4
 vm_memory = 16384
 storage_pool_name = "default"
-disk2_size = "10G"
+disk2_size_mb = "10240" # in MB, for VirtualBox use MB
+disk2_size = disk2_size_mb.to_i / 1024 # in GB for qemu-kvm use GB
 
 
 #----------------------------------------------------------------------------
@@ -63,6 +64,29 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     #v.vm.network "private_network", ip: "192.168.56.33"
   end
 
+  # VirtualBox settings
+  config.vm.provider "virtualbox" do |vbox|
+
+    vbox.name = "#{srv}"
+
+    if (defined?(vm_memory))
+      vbox.memory = vm_memory
+    end
+
+    if (defined?(vm_cpus))
+      vbox.cpus = vm_cpus
+    end
+
+    # Path for the second disk
+    disk2 = File.join(Dir.pwd, "#{srv}-disk2.vdi")
+
+    # Create disk only if it doesn't already exist
+    unless File.exist?(disk2)
+      vb.customize [
+        "createhd", "--filename", disk2, "--size", "#{disk2_size_mb}"
+      ]
+    end
+
   # qemu-kvm settings
   config.vm.provider "libvirt" do |libvirt|
 
@@ -81,7 +105,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     # create second vdisk
-    libvirt.storage :file, :size => "#{disk2_size}", :path => "#{srv}-disk2.qcow2"
+    libvirt.storage :file, :size => "#{disk2_size}G", :path => "#{srv}-disk2.qcow2"
 
   end 
 
