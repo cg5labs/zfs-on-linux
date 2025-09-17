@@ -6,11 +6,12 @@
   vars:
     ntp_timezone: Asia/Singapore
     zfs_pkg_version: "2.2.8"
+
+    # managed as external variable in Vagrantfile
     #disk2_device: "/dev/vdb" # virtio for qemu
-    disk2_device: "/dev/sdb" # sata for vbox
+    #disk2_device: "/dev/sdb" # sata for vbox
 
   tasks:
-
     - name: Install EPEL repository
       package:
         name: epel-release
@@ -89,7 +90,6 @@
       modprobe:
         name: zfs
         state: present
-
 
     - name: Create ZFS pool "zfspv-pool" on /dev/vdb
       command: zpool create -f zfspv-pool {{ disk2_device }}
