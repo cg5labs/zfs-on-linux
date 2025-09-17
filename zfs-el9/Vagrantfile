@@ -59,9 +59,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.define srv do |v|
     v.vm.hostname = "#{srv}"
     # this interface is used for Ansible ssh see provisioning/inventory)
-    v.vm.network "private_network", ip: "192.168.56.33" # VirtualBox and qemu OK
+    if ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+        v.vm.network "private_network", ip: "192.168.33.33" # qemu
+    else
+        v.vm.network "private_network", ip: "192.168.56.33" # VirtualBox
+    end
 
-    v.vm.synced_folder ".", "/vagrant", disabled: true
+    #v.vm.synced_folder ".", "/vagrant", disabled: true
+
   end
 
   # VirtualBox settings
@@ -135,7 +140,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   # Ansible provisioner
   config.vm.provision "ansible" do |ansible|
     ansible.playbook = "provisioning/zfs-on-linux.yml"
-    ansible.inventory_path = "provisioning/inventory"
+
+    if ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+      ansible.inventory_path = "provisioning/inventory_qemu"
+      ansible.extra_vars = { disk2_device: '/dev/vdb' }
+    else
+      ansible.inventory_path = "provisioning/inventory_vbox"
+      ansible.extra_vars = { disk2_device: '/dev/sdb' }
+    end
     ansible.become = true
   end
 
