@@ -1,4 +1,0 @@
----
-workspace: /root
-hostname: ntp
-ntp_timezone: Asia/Singapore

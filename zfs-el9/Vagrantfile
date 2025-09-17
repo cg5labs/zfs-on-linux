@@ -12,12 +12,11 @@ VAGRANTFILE_API_VERSION = "2"
 srv = "dev"
 
 # Vagrant box to use
-#vagrant_box_image = "bento/fedora-42"
-vagrant_box_image = "bento/almalinux-9"
+vagrant_box_image = "centos/stream9" # OK
 #vagrant_box_image = "generic/rocky9"  # OK
 #vagrant_box_image = "generic/oracle9" # OK
-#vagrant_box_image = "almalinux/9"     # NOK
-#vagrant_box_image = "cg5labs/rocky9_latest"
+#vagrant_box_image = "cg5labs/rocky9_latest" # OK
+#vagrant_box_image = "cg5labs/alma9_latest" # OK
 
 #----------------------------------------------------------------------------
 # Customizations
@@ -26,9 +25,9 @@ vagrant_box_image = "bento/almalinux-9"
 # Sizing (optional)
 vm_cpus   = 4
 vm_memory = 16384
-storage_pool_name = "default"
-disk2_size_mb = "1024" # in MB, for VirtualBox use MB
-disk2_size = disk2_size_mb.to_i / 1024 # in GB for qemu-kvm use GB
+storage_pool_name = "default"            # libvirt storage pool for qemu-kvm
+disk2_size_mb = "1024"                   # in MB, for VirtualBox use MB
+disk2_size = disk2_size_mb.to_i / 1024   # in GB for qemu-kvm use GB
 
 
 #----------------------------------------------------------------------------
@@ -60,8 +59,9 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.define srv do |v|
     v.vm.hostname = "#{srv}"
     # this interface is used for Ansible ssh see provisioning/inventory)
-    v.vm.network "private_network", ip: "192.168.33.33"
-    #v.vm.network "private_network", ip: "192.168.56.33"
+    v.vm.network "private_network", ip: "192.168.56.33" # VirtualBox and qemu OK
+
+    v.vm.synced_folder ".", "/vagrant", disabled: true
   end
 
   # VirtualBox settings
@@ -87,6 +87,23 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       ]
     end
 
+    # Ensure a SATA controller exists
+    vbox.customize ["storagectl", :id,
+      "--name", "SATA Controller",
+      "--add", "sata",
+      "--controller", "IntelAhci"
+    ]
+
+    # Attach the disk to SATA Controller port 1
+    vbox.customize [
+      "storageattach", :id,
+      "--storagectl", "SATA Controller",
+      "--port", 1,
+      "--device", 0,
+      "--type", "hdd",
+      "--medium", disk2
+    ]
+
   #vbox
   end
 
@@ -96,7 +113,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     libvirt.driver = 'kvm'
     # local connection via Unix-socket
     #libvirt.connect_via_ssh = false
-    libvirt.username = 'root'
+    #libvirt.username = 'root'
     libvirt.storage_pool_name = "#{storage_pool_name}"
 
     if (defined?(vm_cpus))
@@ -108,7 +125,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     # create second vdisk
-    libvirt.storage :file, :size => "#{disk2_size}G", :path => "#{srv}-disk2.qcow2"
+    libvirt.storage :file, :size => "#{disk2_size}G", :path => "#{srv}-disk2.qcow"
 
   end 
 

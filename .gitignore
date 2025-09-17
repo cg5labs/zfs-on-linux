@@ -212,3 +212,5 @@ __marimo__/
 roles
 
 .vagrant
+*.box
+*.vdi

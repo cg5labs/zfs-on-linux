@@ -6,6 +6,8 @@
   vars:
     ntp_timezone: Asia/Singapore
     zfs_pkg_version: "2.2.8"
+    #disk2_device: "/dev/vdb" # virtio for qemu
+    disk2_device: "/dev/sdb" # sata for vbox
 
   tasks:
 
@@ -90,7 +92,7 @@
 
 
     - name: Create ZFS pool "zfspv-pool" on /dev/vdb
-      command: zpool create -f zfspv-pool /dev/vdb
+      command: zpool create -f zfspv-pool {{ disk2_device }}
       args:
         creates: /zfspv-pool
       become: true
