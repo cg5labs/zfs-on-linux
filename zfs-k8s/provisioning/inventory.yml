@@ -1,21 +1,4 @@
 
-#all:
-#  hosts:
-#    k8s-cp:
-#      ansible_ssh_host: "192.168.33.33"
-#      ansible_ssh_port: 22
-#      kubernetes_role: "control_plane"
-#      ntp_timezone: Asia/Singapore
-#      ansible_ssh_private_key_file: /home/tdevops/coding/zfs-vagrant/.vagrant/machines/k8s-cp/libvirt/private_key
-#      ansible_host_key_checking: false
-#    k8s-w1:
-#      ansible_ssh_host: "192.168.33.34"
-#      ansible_ssh_port: 22
-#      kubernetes_role: "node"
-#      ntp_timezone: Asia/Singapore
-#      ansible_ssh_private_key_file: /home/tdevops/coding/zfs-vagrant/.vagrant/machines/k8s-w1/libvirt/private_key
-#      ansible_host_key_checking: false
-
 k8s_cp:
   hosts:
     k8s-cp:
@@ -23,8 +6,9 @@ k8s_cp:
       ansible_ssh_port: 22 
       kubernetes_role: "control_plane"
       ntp_timezone: Asia/Singapore
-      ansible_ssh_private_key_file: /home/tdevops/coding/zfs-vagrant/.vagrant/machines/k8s-cp/libvirt/private_key
+      ansible_ssh_private_key_file: .vagrant/machines/k8s-cp/libvirt/private_key
       ansible_host_key_checking: false
+      kubernetes_ignore_preflight_errors: null
       kubernetes_apiserver_advertise_address: "192.168.33.33"
 
 k8s_nodes:
@@ -34,10 +18,9 @@ k8s_nodes:
       ansible_ssh_port: 22 
       kubernetes_role: "node"
       ntp_timezone: Asia/Singapore
-      ansible_ssh_private_key_file: /home/tdevops/coding/zfs-vagrant/.vagrant/machines/k8s-w1/libvirt/private_key
+      #ansible_ssh_private_key_file: .vagrant/machines/k8s-w1/libvirt/private_key
       ansible_host_key_checking: false
       kubernetes_apiserver_advertise_address: "192.168.33.33"
-
 
     k8s-w2:
       ansible_ssh_host: "192.168.33.35"

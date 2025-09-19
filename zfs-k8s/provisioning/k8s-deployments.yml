@@ -1,0 +1,52 @@
+---
+- name: Deploy K8s monitoring stack
+  hosts: k8s_cp
+  become: true # This applies to all tasks in this play
+  serial: 1
+  vars:
+    kubernetes_version: "1.34"
+    cni: "flannel"
+    ansible_user: vagrant
+    containerd_config_cgroup_driver_systemd: true
+  tasks:
+
+    - name: Add Prometheus chart repo
+      kubernetes.core.helm_repository:
+        name: prometheus-community
+        repo_url: https://prometheus-community.github.io/helm-charts
+        state: present
+
+    - name: Deploy kube-prometheus-stack Helm chart
+      kubernetes.core.helm:
+        name: prometheus-operator
+        chart_ref: prometheus-community/kube-prometheus-stack
+        release_namespace: infra
+        create_namespace: true
+        values:
+          grafana:
+            enabled: true
+          prometheus:
+            prometheusSpec:
+              retention: 30d
+          alertmanager:
+            enabled: true
+        state: present
+
+    - name: Add openEBS chart repo
+      kubernetes.core.helm_repository:
+        name: openebs
+        repo_url: https://openebs.github.io/charts
+        state: present
+
+    - name: Deploy openEBS Helm chart
+      kubernetes.core.helm:
+        name: openebs
+        chart_ref: openebs/openebs
+        release_namespace: infra
+        create_namespace: true
+        state: present
+
+    - name: Apply openEBS ZFS Storage Class
+      kubernetes.core.k8s:
+        state: present # Ensures the resource exists and matches the definition
+        definition: "{{ lookup('file', 'files/openebs-zfs-sc.yml') | from_yaml }}"

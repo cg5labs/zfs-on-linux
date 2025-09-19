@@ -25,7 +25,11 @@ vagrant_box_image = "generic/rocky9"
 # Sizing (optional)
 vm_cpus   = 4
 vm_memory = 8192
-storage_pool_name = "vm-storage"
+storage_pool_name = "vm-storage"                   # storage pool for qemu-kvm
+disk2_size_gb_cp = "10"                            # in GB for qemu-kvm use GB
+disk2_size_gb_node = "100"                         # in GB for qemu-kvm use GB
+disk2_size_mb_cp = disk2_size_gb_cp.to_i * 1024    # for VirtualBox use MB
+disk2_size_mb_node = disk2_size_gb_node.to_i * 1024
 
 #----------------------------------------------------------------------------
 # Setup Vagrant environment
@@ -79,7 +83,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         # local connection via Unix-socket
         libvirt.username = 'root'
         libvirt.storage_pool_name = "#{storage_pool_name}"
-        libvirt.storage :file, :size => '10G', :path => "cp-disk2.qcow2"
+        libvirt.storage :file, :size => "#{disk2_size_gb_cp}G", :path => "cp-disk2.qcow"
 
         if (defined?(vm_cpus))
           libvirt.cpus = vm_cpus
@@ -95,8 +99,18 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         cp.vm.provision "ansible" do |ansible|
           ansible.playbook = "provisioning/k8s-cluster.yml"
           ansible.inventory_path = "provisioning/inventory.yml"
-          ansible.sudo = true
+          #ansible.sudo = true
         end
+
+        cp.vm.provision "ansible" do |ansible|
+          ansible.playbook = "provisioning/k8s-deployments.yml"
+          ansible.inventory_path = "provisioning/inventory.yml"
+        end
+
+
+    end
+  end
+
     end
   end
 
@@ -123,7 +137,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
             # local connection via Unix-socket
             libvirt.username = 'root'
             libvirt.storage_pool_name  = "#{storage_pool_name}"
-            libvirt.storage :file, :size => '100G', :path => "#{srv}-disk2.qcow2"
+            libvirt.storage :file, :size => "#{disk2_size_gb_node}G", :path => "#{srv}-disk2.qcow"
 
         if (defined?(vm_cpus))
           libvirt.cpus = vm_cpus

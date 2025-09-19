@@ -1,14 +1,4 @@
 ---
-
-#- name:  Deactivate Swap
-#  hosts: all
-#  gather_facts: yes
-#  serial: 1
-
-#  vars_files:
-#    - vars/main.yml
-
-
 - name: Apply k8s control plane
   hosts: k8s_cp
   become: true # This applies to all tasks in this play
