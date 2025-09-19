@@ -59,7 +59,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.define srv do |v|
     v.vm.hostname = "#{srv}"
     # this interface is used for Ansible ssh see provisioning/inventory)
-    if ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+    if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'libvirt'
         v.vm.network "private_network", ip: "192.168.33.33" # qemu
     else
         v.vm.network "private_network", ip: "192.168.56.33" # VirtualBox
