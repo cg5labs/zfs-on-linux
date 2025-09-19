@@ -141,14 +141,14 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   config.vm.provision "ansible" do |ansible|
     ansible.playbook = "provisioning/zfs-on-linux.yml"
 
-    if ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
+    if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'libvirt'
       ansible.inventory_path = "provisioning/inventory_qemu"
       ansible.extra_vars = { disk2_device: '/dev/vdb' }
     else
       ansible.inventory_path = "provisioning/inventory_vbox"
       ansible.extra_vars = { disk2_device: '/dev/sdb' }
     end
-    ansible.become = true
+    #ansible.become = true
   end
 
 end
