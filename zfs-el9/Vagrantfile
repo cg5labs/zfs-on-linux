@@ -12,11 +12,11 @@ VAGRANTFILE_API_VERSION = "2"
 srv = "dev"
 
 # Vagrant box to use
-vagrant_box_image = "centos/stream9" # OK
-#vagrant_box_image = "generic/rocky9"  # OK
-#vagrant_box_image = "generic/oracle9" # OK
-#vagrant_box_image = "cg5labs/rocky9_latest" # OK
-#vagrant_box_image = "cg5labs/alma9_latest" # OK
+vagrant_box_image = "centos/stream9"           # OK
+#vagrant_box_image = "generic/rocky9"          # OK
+#vagrant_box_image = "generic/oracle9"         # OK
+#vagrant_box_image = "cg5labs/rocky9_latest"   # OK
+#vagrant_box_image = "cg5labs/alma9_latest"    # OK
 
 #----------------------------------------------------------------------------
 # Customizations
@@ -25,9 +25,9 @@ vagrant_box_image = "centos/stream9" # OK
 # Sizing (optional)
 vm_cpus   = 4
 vm_memory = 16384
-storage_pool_name = "default"            # libvirt storage pool for qemu-kvm
-disk2_size_mb = "1024"                   # in MB, for VirtualBox use MB
-disk2_size = disk2_size_mb.to_i / 1024   # in GB for qemu-kvm use GB
+storage_pool_name = "default"              # libvirt storage pool qemu-kvm
+disk2_size_gb = "1"                        # in GB for qemu-kvm use GB
+disk2_size_mb = disk2_size_gb.to_i * 1024  # in MB, for VirtualBox use MB
 
 
 #----------------------------------------------------------------------------
@@ -65,7 +65,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         v.vm.network "private_network", ip: "192.168.56.33" # VirtualBox
     end
 
-    #v.vm.synced_folder ".", "/vagrant", disabled: true
+    v.vm.synced_folder 'provisioning', '/vagrant', disabled: false
 
   end
 
@@ -130,7 +130,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
 
     # create second vdisk
-    libvirt.storage :file, :size => "#{disk2_size}G", :path => "#{srv}-disk2.qcow"
+    libvirt.storage :file, :size => "#{disk2_size_gb}G", :path => "#{srv}-disk2.qcow"
 
   end 
 
