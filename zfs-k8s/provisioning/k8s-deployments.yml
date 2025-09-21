@@ -10,10 +10,40 @@
     containerd_config_cgroup_driver_systemd: true
   tasks:
 
+    - name: Kubeconfig path for Vagrant user
+      file:
+        path: /home/vagrant/.kube
+        state: directory
+        owner: vagrant
+        group: vagrant
+        mode: '0700'
+      become: true
+
+    - name: Kubeconfig file for Vagrant user
+      copy:
+        src: /etc/kubernetes/admin.conf
+        dest: /home/vagrant/.kube/config
+        remote_src: yes
+        owner: vagrant
+        group: vagrant
+        mode: '0600'
+      become: true
+
+    - name: Set kubecolor alias in Vagrant user .bash_profile
+      lineinfile:
+        path: /home/vagrant/.bash_profile
+        line: 'alias k="kubecolor"'
+        insertafter: EOF
+        #create: yes
+        state: present
+        owner: vagrant
+      become: true
+
     - name: Add Prometheus chart repo
       kubernetes.core.helm_repository:
         name: prometheus-community
         repo_url: https://prometheus-community.github.io/helm-charts
+        force_update: true
         state: present
 
     - name: Deploy kube-prometheus-stack Helm chart
@@ -34,14 +64,15 @@
 
     - name: Add openEBS chart repo
       kubernetes.core.helm_repository:
-        name: openebs
-        repo_url: https://openebs.github.io/charts
+        name: openebs-zfspv
+        repo_url: https://openebs.github.io/zfs-localpv
+        force_update: true
         state: present
 
     - name: Deploy openEBS Helm chart
       kubernetes.core.helm:
-        name: openebs
-        chart_ref: openebs/openebs
+        name: openebs-zfs-localpv
+        chart_ref: openebs-zfspv/zfs-localpv
         release_namespace: infra
         create_namespace: true
         state: present
@@ -50,3 +81,56 @@
       kubernetes.core.k8s:
         state: present # Ensures the resource exists and matches the definition
         definition: "{{ lookup('file', 'files/openebs-zfs-sc.yml') | from_yaml }}"
+
+    - name: Add Elastic Stack chart repo
+      kubernetes.core.helm_repository:
+        name: elastic
+        repo_url: https://helm.elastic.co
+        state: present
+
+    - name: Deploy Elastic Stack Operator Helm chart
+      kubernetes.core.helm:
+        name: elastic-operator
+        chart_ref: elastic/eck-operator
+        release_namespace: infra
+        create_namespace: true
+        values:
+          crds:
+            create: true
+        state: present
+
+#    - name: Deploy Elasticsearch
+#      kubernetes.core.helm:
+#        name: eck-es
+#        chart_ref: elastic/eck-elasticsearch
+#        release_namespace: apps
+#        create_namespace: true
+#        values:
+#          version: 8.19.0
+#          nameOverride: "pt"
+#          config:
+#            node.roles: [ "master" ]
+#            node.store.allow_mmap: false
+#            podTemplate:
+#              spec:
+#                containers:
+#                  - name: elasticsearch
+#                    resources:
+#                      limits:
+#                        memory: 8Gi
+#                        cpu: 2
+#                volumeClaimTemplates:
+#                  - metadata:
+#                      name: elasticsearch-data
+#                    spec:
+#                      storageClassName: openebs-zfspv
+#                      accessModes:
+#                        - ReadWriteOnce
+#                      resources:
+#                        requests:
+#                          storage: 10Gi
+#
+#          state: present
+
+
+

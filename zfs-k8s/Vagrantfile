@@ -9,8 +9,9 @@ VAGRANTFILE_API_VERSION = "2"
 #----------------------------------------------------------------------------
 
 # Vagrant VMs
-cp_array = [ "k8s-cp"]                             # k8s control plane
-node_array = [ "k8s-w1", "k8s-w2", "k8s-w3"]       # k8s worker nodes
+cp_array = [ "k8s-cp"]                              # k8s control plane
+#node_array = [ "k8s-w1", "k8s-w2", "k8s-w3"]       # k8s worker nodes
+node_array = [ "k8s-w1"]       # k8s worker nodes
 
 # Vagrant box to use
 #vagrant_box_image = "cg5labs/rocky9_latest"
@@ -67,12 +68,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
   cp_array.each do |srv|
     config.vm.define "#{srv}" do |cp|
-      cp.vm.hostname = "k8s-cp"
 
       # kube-API server interface, refactor for HA/VIP
       # this interface is used for Ansible ssh see provisioning/inventory)
       if srv == "k8s-cp"
-        cp.vm.network "private_network", ip: "192.168.33.33"
+        cp.vm.network "private_network", ip: "192.168.33.33", libvirt_network_name: "internal"
         cp.vm.hostname = "k8s-cp"
       end
 
@@ -101,17 +101,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
           ansible.inventory_path = "provisioning/inventory.yml"
           #ansible.sudo = true
         end
-
-        cp.vm.provision "ansible" do |ansible|
-          ansible.playbook = "provisioning/k8s-deployments.yml"
-          ansible.inventory_path = "provisioning/inventory.yml"
-        end
-
-
     end
-  end
 
-    end
   end
 
 
@@ -121,13 +112,13 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       # this interface is used for Ansible ssh see provisioning/inventory)
       if srv == "k8s-w1"
-        node.vm.network "private_network", ip: "192.168.33.34"
+        node.vm.network "private_network", ip: "192.168.33.34", libvirt_network_name: "internal"
         node.vm.hostname = "k8s-w1"
       elsif srv == "k8s-w2"
-        node.vm.network "private_network", ip: "192.168.33.35"
+        node.vm.network "private_network", ip: "192.168.33.35", libvirt_network_name: "internal"
         node.vm.hostname = "k8s-w2"
       elsif srv == "k8s-w3"
-        node.vm.network "private_network", ip: "192.168.33.36"
+        node.vm.network "private_network", ip: "192.168.33.36", libvirt_network_name: "internal"
         node.vm.hostname = "k8s-w3"
       end
 
@@ -158,6 +149,24 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
     end
   # node
   end
+
+  cp_array.each do |srv|
+    config.vm.define "#{srv}" do |cp|
+
+      # kube-API server interface, refactor for HA/VIP
+      # this interface is used for Ansible ssh see provisioning/inventory)
+      #if srv == "k8s-cp"
+        #cp.vm.network "private_network", ip: "192.168.33.33"
+        #cp.vm.hostname = "k8s-cp"
+      #end
+
+      cp.vm.provision "ansible" do |ansible|
+        ansible.playbook = "provisioning/k8s-deployments.yml"
+        ansible.inventory_path = "provisioning/inventory.yml"
+      end
+
+    end
+ end
 
 # config
 end
