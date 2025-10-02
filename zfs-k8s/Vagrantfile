@@ -10,8 +10,8 @@ VAGRANTFILE_API_VERSION = "2"
 
 # Vagrant VMs
 cp_array = [ "k8s-cp"]                              # k8s control plane
-#node_array = [ "k8s-w1", "k8s-w2", "k8s-w3"]       # k8s worker nodes
-node_array = [ "k8s-w1"]       # k8s worker nodes
+node_array = [ "k8s-w1", "k8s-w2", "k8s-w3"]       # k8s worker nodes
+#node_array = [ "k8s-w1"]       # k8s worker nodes
 
 # Vagrant box to use
 #vagrant_box_image = "cg5labs/rocky9_latest"
@@ -28,7 +28,7 @@ vm_cpus   = 4
 vm_memory = 8192
 storage_pool_name = "vm-storage"                   # storage pool for qemu-kvm
 disk2_size_gb_cp = "10"                            # in GB for qemu-kvm use GB
-disk2_size_gb_node = "100"                         # in GB for qemu-kvm use GB
+disk2_size_gb_node = "250"                         # in GB for qemu-kvm use GB
 disk2_size_mb_cp = disk2_size_gb_cp.to_i * 1024    # for VirtualBox use MB
 disk2_size_mb_node = disk2_size_gb_node.to_i * 1024
 
@@ -120,13 +120,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       elsif srv == "k8s-w3"
         node.vm.network "private_network", ip: "192.168.33.36", libvirt_network_name: "internal"
         node.vm.hostname = "k8s-w3"
+        # override default primary disk size
+        node.vm.disk :disk, size: "200GB", primary: true
       end
 
         # qemu-kvm settings
         node.vm.provider :libvirt do |libvirt|
             libvirt.driver = 'kvm'
+            if srv == "k8s-w3"
+                # override default primary disk size
+                libvirt.machine_virtual_size = 200
+            end
             # local connection via Unix-socket
-            libvirt.username = 'root'
+            #libvirt.username = 'root'
             libvirt.storage_pool_name  = "#{storage_pool_name}"
             libvirt.storage :file, :size => "#{disk2_size_gb_node}G", :path => "#{srv}-disk2.qcow"
 
@@ -141,6 +147,11 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       end
 
       node.vm.provision "shell", path: "provisioning/base_nodes.sh"
+
+      if srv == "k8s-w3"
+        node.vm.provision "shell", inline: "sudo lvextend -L +54G /dev/rl_rocky9/root && sudo xfs_growfs /"
+      end
+
       node.vm.provision "ansible" do |ansible|
         ansible.playbook = "provisioning/k8s-cluster.yml"
         ansible.inventory_path = "provisioning/inventory.yml"
@@ -153,12 +164,6 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   cp_array.each do |srv|
     config.vm.define "#{srv}" do |cp|
 
-      # kube-API server interface, refactor for HA/VIP
-      # this interface is used for Ansible ssh see provisioning/inventory)
-      #if srv == "k8s-cp"
-        #cp.vm.network "private_network", ip: "192.168.33.33"
-        #cp.vm.hostname = "k8s-cp"
-      #end
 
       cp.vm.provision "ansible" do |ansible|
         ansible.playbook = "provisioning/k8s-deployments.yml"

@@ -64,24 +64,39 @@
 
     - name: Add openEBS chart repo
       kubernetes.core.helm_repository:
-        name: openebs-zfspv
-        repo_url: https://openebs.github.io/zfs-localpv
+        name: openebs
+        repo_url: https://openebs.github.io/openebs
         force_update: true
         state: present
 
     - name: Deploy openEBS Helm chart
       kubernetes.core.helm:
-        name: openebs-zfs-localpv
-        chart_ref: openebs-zfspv/zfs-localpv
+        name: openebs
+        chart_ref: openebs/openebs
         release_namespace: infra
         create_namespace: true
+        values:
+          engines:
+            local:
+              zfs:
+                enabled: true
+            replicated:
+              mayastor:
+                enabled: false
+          loki:
+            enabled: false
+          minio:
+            enabled: false
+          alloy:
+            enabled: false
+
         state: present
 
     - name: Apply openEBS ZFS Storage Class
       kubernetes.core.k8s:
         state: present # Ensures the resource exists and matches the definition
         definition: "{{ lookup('file', 'files/openebs-zfs-sc.yml') | from_yaml }}"
-
+#
     - name: Add Elastic Stack chart repo
       kubernetes.core.helm_repository:
         name: elastic
@@ -98,39 +113,3 @@
           crds:
             create: true
         state: present
-
-#    - name: Deploy Elasticsearch
-#      kubernetes.core.helm:
-#        name: eck-es
-#        chart_ref: elastic/eck-elasticsearch
-#        release_namespace: apps
-#        create_namespace: true
-#        values:
-#          version: 8.19.0
-#          nameOverride: "pt"
-#          config:
-#            node.roles: [ "master" ]
-#            node.store.allow_mmap: false
-#            podTemplate:
-#              spec:
-#                containers:
-#                  - name: elasticsearch
-#                    resources:
-#                      limits:
-#                        memory: 8Gi
-#                        cpu: 2
-#                volumeClaimTemplates:
-#                  - metadata:
-#                      name: elasticsearch-data
-#                    spec:
-#                      storageClassName: openebs-zfspv
-#                      accessModes:
-#                        - ReadWriteOnce
-#                      resources:
-#                        requests:
-#                          storage: 10Gi
-#
-#          state: present
-
-
-

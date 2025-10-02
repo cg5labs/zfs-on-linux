@@ -21,59 +21,6 @@
         replace: '# \1swap\2'
       become: true
 
-#    # firewalld whitelisting for all k8s nodes
-#    - name: Permit traffic in default zone for kube-control-plane service
-#      ansible.posix.firewalld:
-#        service: kube-control-plane
-#        permanent: true
-#        state: enabled
-#
-#    - name: Permit traffic in default zone for kube-control-plane-secure service
-#      ansible.posix.firewalld:
-#        service: kube-control-plane-secure
-#        permanent: true
-#        state: enabled
-#
-#    - name: Permit traffic in default zone for kubelet service
-#      ansible.posix.firewalld:
-#        service: kubelet
-#        permanent: true
-#        state: enabled
-#
-#    - name: Permit traffic in default zone on port 8285/ucp for Flannel VXLAN
-#      ansible.posix.firewalld:
-#        port: 8285/udp
-#        permanent: true
-#        zone: public
-#        state: enabled
-#
-#    - name: Permit traffic in default zone on port 8472/ucp for Flannel VXLAN
-#      ansible.posix.firewalld:
-#        port: 8472/udp
-#        permanent: true
-#        zone: public
-#        state: enabled
-#
-#    - name: Enable masquerade in public zone
-#      ansible.posix.firewalld:
-#        masquerade: true
-#        zone: public
-#        permanent: true
-#        state: enabled
-#
-#    - name: Allow traffic from 10.244.0.0/16 (Flannel) in public zone
-#      ansible.posix.firewalld:
-#        source: 10.244.0.0/16
-#        zone: public
-#        state: enabled
-#
-#    # reload firewalld to apply changes
-#    - name: Always reload firewalld
-#      service:
-#        name: firewalld
-#        state: reloaded
-
-
     - name: Copy kube-flannel.yml to /home/vagrant/
       ansible.builtin.copy:
         src: files/kube-flannel.yml
@@ -107,52 +54,8 @@
         regexp: '^\s*(.+\s+)swap(\s+.+)$'
         replace: '# \1swap\2'
 
-#    - name: Permit traffic in default zone on port 8285/ucp for Flannel VXLAN
-#      ansible.posix.firewalld:
-#        port: 8285/udp
-#        permanent: true
-#        state: enabled
-#      when: kubernetes_role in ['control_plane', 'node']
-#
-#    - name: Permit traffic in default zone on port 8472/ucp for Flannel VXLAN
-#      ansible.posix.firewalld:
-#        port: 8472/udp
-#        permanent: true
-#        state: enabled
-#      when: kubernetes_role in ['control_plane', 'node']
-#
-#    - name: Enable masquerade in public zone
-#      ansible.posix.firewalld:
-#        masquerade: true
-#        permanent: true
-#        state: enabled
-#
-#    - name: Permit traffic in default zone for kube-worker service
-#      ansible.posix.firewalld:
-#        service: kube-worker
-#        permanent: true
-#        state: enabled
-#
-#    - name: Permit traffic in default zone for etcd-client service
-#      ansible.posix.firewalld:
-#        service: etcd-client
-#        permanent: true
-#        state: enabled
-#
-#    - name: Allow traffic from 10.244.0.0/16 (Flannel) in public zone
-#      ansible.posix.firewalld:
-#        source: 10.244.0.0/16
-#        zone: public
-#        state: enabled
-#
-#    # reload firewalld to apply changes
-#    - name: Always reload firewalld
-#      service:
-#        name: firewalld
-#        state: reloaded
-
   roles:
-    #- cg5labs.zfs
+    - cg5labs.zfs
     - cg5labs.firewalld
     - geerlingguy.ntp
     - geerlingguy.containerd
