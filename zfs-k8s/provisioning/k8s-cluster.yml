@@ -55,7 +55,7 @@
         replace: '# \1swap\2'
 
   roles:
-    - cg5labs.zfs
+    #- cg5labs.zfs
     - cg5labs.firewalld
     - geerlingguy.ntp
     - geerlingguy.containerd

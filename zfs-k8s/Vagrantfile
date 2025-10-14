@@ -162,11 +162,19 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
   end
 
   cp_array.each do |srv|
+
     config.vm.define "#{srv}" do |cp|
-
-
+      # k8s-infra apps playbook
+      # playbook hosts restricted to k8s-cp
       cp.vm.provision "ansible" do |ansible|
-        ansible.playbook = "provisioning/k8s-deployments.yml"
+        ansible.playbook = "provisioning/k8s-infra.yml"
+        ansible.inventory_path = "provisioning/inventory.yml"
+      end
+
+      # k8s-workload apps playbook
+      # playbook hosts restricted to k8s-cp
+      cp.vm.provision "ansible" do |ansible|
+        ansible.playbook = "provisioning/k8s-apps.yml"
         ansible.inventory_path = "provisioning/inventory.yml"
       end
 

@@ -1,0 +1,63 @@
+---
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: pt
+spec:
+  version: 8.19.0
+  nodeSets:
+  - name: masters
+    count: 1
+    config:
+      node.roles: ["master"]
+      xpack.ml.enabled: false
+    podTemplate:
+      spec:
+        nodeSelector:
+          wl: es-cp
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 0.5
+              memory: "1Gi"
+            limits:
+              cpu: 1
+              memory: "2Gi"
+    volumeClaimTemplates:
+     - metadata:
+         name: elasticsearch-data
+       spec:
+         accessModes:
+         - ReadWriteOnce
+         resources:
+           requests:
+             storage: 10Gi
+         storageClassName: openebs-hostpath
+  - name: data
+    count: 2
+    config:
+      node.roles: ["data", "ingest", "ml", "transform"]
+    podTemplate:
+      spec:
+        nodeSelector:
+          wl: es-data
+        containers:
+        - name: elasticsearch
+          resources:
+            requests:
+              cpu: 2
+              memory: "2Gi"
+            limits:
+              cpu: 4
+              memory: "7Gi"
+    volumeClaimTemplates:
+     - metadata:
+         name: elasticsearch-data
+       spec:
+         accessModes:
+         - ReadWriteOnce
+         resources:
+           requests:
+             storage: 230Gi
+         storageClassName: openebs-hostpath

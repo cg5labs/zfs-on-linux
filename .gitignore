@@ -209,7 +209,7 @@ __marimo__/
 .idea
 *.iml
 
-roles
+roles/geerlingguy.*
 
 .vagrant
 *.box

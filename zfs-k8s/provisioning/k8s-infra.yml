@@ -1,5 +1,5 @@
 ---
-- name: Deploy K8s monitoring stack
+- name: Deploy K8s infra
   hosts: k8s_cp
   become: true # This applies to all tasks in this play
   serial: 1
@@ -39,6 +39,13 @@
         owner: vagrant
       become: true
 
+    - name: Create k8s infra namespace
+      kubernetes.core.k8s:
+        name: infra
+        api_version: v1
+        kind: Namespace
+        state: present
+
     - name: Add Prometheus chart repo
       kubernetes.core.helm_repository:
         name: prometheus-community
@@ -48,10 +55,9 @@
 
     - name: Deploy kube-prometheus-stack Helm chart
       kubernetes.core.helm:
-        name: prometheus-operator
+        name: po
         chart_ref: prometheus-community/kube-prometheus-stack
         release_namespace: infra
-        create_namespace: true
         values:
           grafana:
             enabled: true
@@ -59,7 +65,7 @@
             prometheusSpec:
               retention: 30d
           alertmanager:
-            enabled: true
+            enabled: false
         state: present
 
     - name: Add openEBS chart repo
@@ -74,7 +80,6 @@
         name: openebs
         chart_ref: openebs/openebs
         release_namespace: infra
-        create_namespace: true
         values:
           engines:
             local:
@@ -89,27 +94,9 @@
             enabled: false
           alloy:
             enabled: false
-
         state: present
 
     - name: Apply openEBS ZFS Storage Class
       kubernetes.core.k8s:
         state: present # Ensures the resource exists and matches the definition
         definition: "{{ lookup('file', 'files/openebs-zfs-sc.yml') | from_yaml }}"
-#
-    - name: Add Elastic Stack chart repo
-      kubernetes.core.helm_repository:
-        name: elastic
-        repo_url: https://helm.elastic.co
-        state: present
-
-    - name: Deploy Elastic Stack Operator Helm chart
-      kubernetes.core.helm:
-        name: elastic-operator
-        chart_ref: elastic/eck-operator
-        release_namespace: infra
-        create_namespace: true
-        values:
-          crds:
-            create: true
-        state: present

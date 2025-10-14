@@ -1,0 +1,95 @@
+---
+- name: Deploy K8s apps
+  hosts: k8s_cp
+  become: true # This applies to all tasks in this play
+  vars:
+    app_storageclass: "openebs-zfspv"
+    #app_storageclass: "openebs-hostpath"
+
+  tasks:
+
+  - name: Create k8s apps namespace
+    kubernetes.core.k8s:
+      name: apps
+      api_version: v1
+      kind: Namespace
+      state: present
+
+  - name: Add Elastic Stack chart repo
+    kubernetes.core.helm_repository:
+      name: elastic
+      repo_url: https://helm.elastic.co
+      state: present
+
+  - name: Deploy Elastic Stack Operator Helm chart
+    kubernetes.core.helm:
+      release_name: elastic-operator
+      chart_ref: elastic/eck-operator
+      release_namespace: apps
+      values:
+        crds:
+          create: true
+      state: present
+
+  - name: Create Elasticsearch cluster with OpenEBS ZFS storage class
+    kubernetes.core.k8s:
+      state: present
+      namespace: apps
+      definition: "{{ lookup('file', 'files/elastic-zfs.yml') | from_yaml }}"
+    when: app_storageclass == "openebs-zfspv"
+
+  - name: Create Elasticsearch cluster with OpenEBS hostpath storage class
+    kubernetes.core.k8s:
+      state: present
+      namespace: apps
+      definition: "{{ lookup('file', 'files/elastic.yml') | from_yaml }}"
+    when: app_storageclass == "openebs-hostpath"
+
+  # helm upgrade --install -n apps ee  oci://ghcr.io/prometheus-community/charts/prometheus-elasticsearch-exporter -f values-new.yaml --debug
+  - name: Deploy Prometheus Elasticsearch Exporter Helm chart
+    kubernetes.core.helm:
+      release_name: ee
+      release_namespace: apps
+      chart_ref: oci://ghcr.io/prometheus-community/charts/prometheus-elasticsearch-exporter
+      values:
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "100m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        extraEnvSecrets:
+          ES_PASSWORD:
+            secret: pt-es-elastic-user
+            key: elastic
+        secretMounts:
+          - name: pt-es-http-certs-public
+            secretName: pt-es-http-certs-public
+            path: /ssl
+        es:
+          uri: "https://elastic:$(ES_PASSWORD)@pt-es-http:9200"
+          all: true
+          indices: true
+          indices_settings: true
+          indices_mappings: true
+          aliases: false
+          shards: true
+          snapshots: true
+          cluster_settings: false
+          slm: false
+          data_stream: false
+          ilm: false
+          sslSkipVerify: true
+          ssl:
+            enabled: true
+            useExistingSecrets: true
+            ca:
+              path: /ssl/ca.crt
+            client:
+              enabled: false
+        serviceMonitor:
+          enabled: true
+          labels:
+            release: po
+      state: present
