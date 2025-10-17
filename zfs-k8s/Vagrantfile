@@ -10,8 +10,8 @@ VAGRANTFILE_API_VERSION = "2"
 
 # Vagrant VMs
 cp_array = [ "k8s-cp"]                              # k8s control plane
-node_array = [ "k8s-w1", "k8s-w2", "k8s-w3"]       # k8s worker nodes
-#node_array = [ "k8s-w1"]       # k8s worker nodes
+#node_array = [ "k8s-w1", "k8s-w2", "k8s-w3"]       # k8s worker nodes
+node_array = [ "k8s-w1"]       # k8s worker nodes
 
 # Vagrant box to use
 #vagrant_box_image = "cg5labs/rocky9_latest"
@@ -25,10 +25,13 @@ vagrant_box_image = "generic/rocky9"
 
 # Sizing (optional)
 vm_cpus   = 4
-vm_memory = 8192
+#vm_memory = 8192
+vm_memory = 4096
 storage_pool_name = "vm-storage"                   # storage pool for qemu-kvm
-disk2_size_gb_cp = "10"                            # in GB for qemu-kvm use GB
-disk2_size_gb_node = "250"                         # in GB for qemu-kvm use GB
+#disk2_size_gb_cp = "10"                            # in GB for qemu-kvm use GB
+disk2_size_gb_cp = "1"                            # in GB for qemu-kvm use GB
+#disk2_size_gb_node = "250"                         # in GB for qemu-kvm use GB
+disk2_size_gb_node = "2"                         # in GB for qemu-kvm use GB
 disk2_size_mb_cp = disk2_size_gb_cp.to_i * 1024    # for VirtualBox use MB
 disk2_size_mb_node = disk2_size_gb_node.to_i * 1024
 
@@ -42,6 +45,21 @@ if RUBY_PLATFORM.downcase.include?("linux")
     ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
 end
 
+# set Virtualbox as default provider on macOS
+if RUBY_PLATFORM.downcase.include?("darwin")
+    ENV['VAGRANT_DEFAULT_PROVIDER'] = 'virtualbox'
+end
+
+if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'libvirt'
+  inventory_path = "provisioning/inventory_qemu.yml"
+  extra_vars = { disk2_device: '/dev/vdb' }
+end
+
+if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'virtualbox'
+  inventory_path = "provisioning/inventory_vbox.yml"
+  extra_vars = { disk2_device: '/dev/sdb' }
+end
+
 
 CMD_FILE="./provisioning/ansible_roles_setup.sh"
 RC = system(CMD_FILE) 
@@ -49,12 +67,6 @@ if RC == false
     puts "==> File not found: #{CMD_FILE}"
     exit
 end
-
-# set libvirt (qemu-kvm) as default provider on Linux
-if RUBY_PLATFORM.downcase.include?("linux")
-    ENV['VAGRANT_DEFAULT_PROVIDER'] = 'libvirt'
-end
-    
 
 #----------------------------------------------------------------------------
 # Vagrant VM definition
@@ -72,9 +84,60 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # kube-API server interface, refactor for HA/VIP
       # this interface is used for Ansible ssh see provisioning/inventory)
       if srv == "k8s-cp"
-        cp.vm.network "private_network", ip: "192.168.33.33", libvirt_network_name: "internal"
+        if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'libvirt'
+          cp.vm.network "private_network", ip: "192.168.33.33", libvirt_network_name: "internal"
+        end 
+
+        if ENV['VAGRANT_DEFAULT_PROVIDER'] != 'libvirt'
+          cp.vm.network "private_network", ip: "192.168.56.33"
+        end
+
         cp.vm.hostname = "k8s-cp"
       end
+
+      # VirtualBox settings
+      cp.vm.provider "virtualbox" do |vbox|
+
+        vbox.name = "#{srv}"
+
+        if (defined?(vm_memory))
+          vbox.memory = vm_memory
+        end
+
+        if (defined?(vm_cpus))
+          vbox.cpus = vm_cpus
+        end
+
+        # Path for the second disk
+        disk2 = File.join(Dir.pwd, "#{srv}-disk2.vdi")
+
+        # Create disk only if it doesn't already exist
+        unless File.exist?(disk2)
+          vbox.customize [
+            "createhd", "--filename", disk2, "--size", "#{disk2_size_mb_cp}"
+          ]
+        end
+
+        # Ensure a SATA controller exists
+        #vbox.customize ["storagectl", :id,
+        #  "--name", "SATA Controller",
+        #  "--add", "sata",
+        #  "--controller", "IntelAhci"
+        #]
+
+        # Attach the disk to SATA Controller port 1
+        vbox.customize [
+          "storageattach", :id,
+          "--storagectl", "SATA Controller",
+          "--port", 1,
+          "--device", 0,
+          "--type", "hdd",
+          "--medium", disk2
+        ]
+
+      #vbox
+      end
+
 
       # qemu-kvm settings
       cp.vm.provider :libvirt do |libvirt|
@@ -98,8 +161,7 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
         cp.vm.provision "shell", path: "provisioning/base_preinstall.sh"
         cp.vm.provision "ansible" do |ansible|
           ansible.playbook = "provisioning/k8s-cluster.yml"
-          ansible.inventory_path = "provisioning/inventory.yml"
-          #ansible.sudo = true
+          ansible.inventory_path = inventory_path
         end
     end
 
@@ -112,37 +174,99 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       # this interface is used for Ansible ssh see provisioning/inventory)
       if srv == "k8s-w1"
-        node.vm.network "private_network", ip: "192.168.33.34", libvirt_network_name: "internal"
+        if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'libvirt'
+          node.vm.network "private_network", ip: "192.168.33.34", libvirt_network_name: "internal"
+        end
+
+        if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'virtualbox'
+          node.vm.network "private_network", ip: "192.168.56.34" # vbox
+        end
+
         node.vm.hostname = "k8s-w1"
+
       elsif srv == "k8s-w2"
-        node.vm.network "private_network", ip: "192.168.33.35", libvirt_network_name: "internal"
+        if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'libvirt'
+          node.vm.network "private_network", ip: "192.168.33.35", libvirt_network_name: "internal"
+        end
+        if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'virtualbox'
+          node.vm.network "private_network", ip: "192.168.56.35" # vbox
+        end
         node.vm.hostname = "k8s-w2"
+
       elsif srv == "k8s-w3"
-        node.vm.network "private_network", ip: "192.168.33.36", libvirt_network_name: "internal"
+        if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'libvirt'
+          node.vm.network "private_network", ip: "192.168.33.36", libvirt_network_name: "internal"
+        end
+        if ENV['VAGRANT_DEFAULT_PROVIDER'] == 'virtualbox'
+          node.vm.network "private_network", ip: "192.168.56.36" # vbox
+        end
         node.vm.hostname = "k8s-w3"
         # override default primary disk size
         node.vm.disk :disk, size: "200GB", primary: true
       end
 
-        # qemu-kvm settings
-        node.vm.provider :libvirt do |libvirt|
-            libvirt.driver = 'kvm'
-            if srv == "k8s-w3"
-                # override default primary disk size
-                libvirt.machine_virtual_size = 200
-            end
-            # local connection via Unix-socket
-            #libvirt.username = 'root'
-            libvirt.storage_pool_name  = "#{storage_pool_name}"
-            libvirt.storage :file, :size => "#{disk2_size_gb_node}G", :path => "#{srv}-disk2.qcow"
+      # VirtualBox settings
+      config.vm.provider "virtualbox" do |vbox|
 
-        if (defined?(vm_cpus))
-          libvirt.cpus = vm_cpus
-        end
+        vbox.name = "#{srv}"
 
         if (defined?(vm_memory))
-          libvirt.memory = vm_memory
+          vbox.memory = vm_memory
         end
+
+        if (defined?(vm_cpus))
+          vbox.cpus = vm_cpus
+        end
+
+        # Path for the second disk
+        disk2 = File.join(Dir.pwd, "#{srv}-disk2.vdi")
+
+        # Create disk only if it doesn't already exist
+        unless File.exist?(disk2)
+          vbox.customize [
+            "createhd", "--filename", disk2, "--size", "#{disk2_size_mb_node}"
+          ]
+        end
+
+        # Ensure a SATA controller exists
+        #vbox.customize ["storagectl", :id,
+        #  "--name", "SATA Controller",
+        #  "--add", "sata",
+        #  "--controller", "IntelAhci"
+        #]
+
+        # Attach the disk to SATA Controller port 1
+        vbox.customize [
+          "storageattach", :id,
+          "--storagectl", "SATA Controller",
+          "--port", 1,
+          "--device", 0,
+          "--type", "hdd",
+          "--medium", disk2
+        ]
+
+      #vbox
+      end
+
+      # qemu-kvm settings
+      node.vm.provider :libvirt do |libvirt|
+          libvirt.driver = 'kvm'
+          if srv == "k8s-w3"
+              # override default primary disk size
+              libvirt.machine_virtual_size = 200
+          end
+          # local connection via Unix-socket
+          #libvirt.username = 'root'
+          libvirt.storage_pool_name  = "#{storage_pool_name}"
+          libvirt.storage :file, :size => "#{disk2_size_gb_node}G", :path => "#{srv}-disk2.qcow"
+
+          if (defined?(vm_cpus))
+            libvirt.cpus = vm_cpus
+          end
+
+          if (defined?(vm_memory))
+            libvirt.memory = vm_memory
+          end
       # qemu
       end
 
@@ -154,8 +278,8 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
 
       node.vm.provision "ansible" do |ansible|
         ansible.playbook = "provisioning/k8s-cluster.yml"
-        ansible.inventory_path = "provisioning/inventory.yml"
-        ansible.sudo = true
+        ansible.inventory_path = inventory_path
+        #ansible.become = true
       end
     end
   # node
@@ -168,15 +292,17 @@ Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
       # playbook hosts restricted to k8s-cp
       cp.vm.provision "ansible" do |ansible|
         ansible.playbook = "provisioning/k8s-infra.yml"
-        ansible.inventory_path = "provisioning/inventory.yml"
+        #ansible.inventory_path = "provisioning/inventory_qemu.yml"
+        ansible.inventory_path = inventory_path
       end
 
       # k8s-workload apps playbook
       # playbook hosts restricted to k8s-cp
-      cp.vm.provision "ansible" do |ansible|
-        ansible.playbook = "provisioning/k8s-apps.yml"
-        ansible.inventory_path = "provisioning/inventory.yml"
-      end
+      #cp.vm.provision "ansible" do |ansible|
+      #  ansible.playbook = "provisioning/k8s-apps.yml"
+      #  #ansible.inventory_path = "provisioning/inventory_qemu.yml"
+      #  ansible.inventory_path = inventory_path
+      #end
 
     end
  end
