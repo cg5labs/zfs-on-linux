@@ -31,6 +31,22 @@
           create: true
       state: present
 
+  - name: Set sysctl.conf for Elasticsearch (vm.max_map_count)
+    sysctl:
+      name: vm.max_map_count
+      value: "262144"
+      sysctl_set: true
+      state: present
+      reload: true
+
+  - name: Set sysctl.conf for Elasticsearch (fs.file-max)
+    sysctl:
+      name: fs.file-max
+      value: "65536"
+      sysctl_set: true
+      state: present
+      reload: true
+
   - name: Create Elasticsearch cluster with OpenEBS ZFS storage class
     kubernetes.core.k8s:
       state: present

@@ -58,30 +58,35 @@ EOF
 #firewall-cmd --reload
 
 
+#
+# migrated to  Ansible playbooks (k8s-infra.yml and k8s-apps.yml)
+#
+
+
 # Disable SELinux
-setenforce 0
+#setenforce 0
 # Modify the SELINUX setting to disabled
-sed -i 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
+#sed -i 's/^SELINUX=.*/SELINUX=disabled/g' /etc/selinux/config
 
 # sysctl tuning for Elasticsearch
-cat <<EOF >> /etc/sysctl.conf
-vm.max_map_count=262144
-fs.file-max=65536
-EOF
-sysctl -p
+#cat <<EOF >> /etc/sysctl.conf
+#vm.max_map_count=262144
+#fs.file-max=65536
+#EOF
+#sysctl -p
 
 # Ansible K8s dependencies
-dnf install -y python3-pip
-pip3 install --upgrade pip
-pip3 install pyyaml
-pip3 install kubernetes
-cd /tmp
-curl -LO https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz
-tar -zxvf helm-v3.19.0-linux-amd64.tar.gz
-mv linux-amd64/helm /usr/local/sbin/helm
-chmod +x /usr/local/sbin/helm
-helm version
+#dnf install -y python3-pip
+#pip3 install --upgrade pip
+#pip3 install pyyaml
+#pip3 install kubernetes
+#cd /tmp
+#curl -LO https://get.helm.sh/helm-v3.19.0-linux-amd64.tar.gz
+#tar -zxvf helm-v3.19.0-linux-amd64.tar.gz
+#mv linux-amd64/helm /usr/local/sbin/helm
+#chmod +x /usr/local/sbin/helm
+#helm version
 
 # Kubecolor
-curl -LO https://github.com/kubecolor/kubecolor/releases/download/v0.5.1/kubecolor_0.5.1_linux_amd64.rpm
-dnf install -y ./kubecolor_0.5.1_linux_amd64.rpm
+#curl -LO https://github.com/kubecolor/kubecolor/releases/download/v0.5.1/kubecolor_0.5.1_linux_amd64.rpm
+#dnf install -y ./kubecolor_0.5.1_linux_amd64.rpm

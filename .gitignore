@@ -209,7 +209,11 @@ __marimo__/
 .idea
 *.iml
 
+roles/
 roles/geerlingguy.*
+dev-k8s/provisioning/roles/*
+zfs-k8s/provisioning/roles/*
+zfs-el9/provisioning/roles/*
 
 .vagrant
 *.box
