@@ -2,8 +2,8 @@
 - name: Deploy K8s apps
   hosts: k8s_cp
   become: true # This applies to all tasks in this play
-  vars:
-    app_storageclass: "openebs-zfspv"
+  #vars:
+    #app_storageclass: "openebs-zfspv"
     #app_storageclass: "openebs-hostpath"
 
   tasks:
@@ -20,6 +20,7 @@
       name: elastic
       repo_url: https://helm.elastic.co
       state: present
+    when: eck_cluster == true
 
   - name: Deploy Elastic Stack Operator Helm chart
     kubernetes.core.helm:
@@ -30,20 +31,25 @@
         crds:
           create: true
       state: present
+    when: eck_cluster == true
 
   - name: Create Elasticsearch cluster with OpenEBS ZFS storage class
     kubernetes.core.k8s:
       state: present
       namespace: apps
       definition: "{{ lookup('file', 'files/elastic-zfs.yml') | from_yaml }}"
-    when: app_storageclass == "openebs-zfspv"
+    when:
+      - app_storageclass == "openebs-zfspv"
+      - eck_cluster == true
 
   - name: Create Elasticsearch cluster with OpenEBS hostpath storage class
     kubernetes.core.k8s:
       state: present
       namespace: apps
       definition: "{{ lookup('file', 'files/elastic.yml') | from_yaml }}"
-    when: app_storageclass == "openebs-hostpath"
+    when:
+      - app_storageclass == "openebs-hostpath"
+      - eck_cluster == true
 
   # helm upgrade --install -n apps ee  oci://ghcr.io/prometheus-community/charts/prometheus-elasticsearch-exporter -f values-new.yaml --debug
   - name: Deploy Prometheus Elasticsearch Exporter Helm chart
@@ -93,3 +99,48 @@
           labels:
             release: po
       state: present
+    when:
+      - prometheus == true
+      - eck_cluster == true
+
+  #FIXME: This runs at the end of  k8s-cp bootstrap and fails silently
+  #FIXME:  as none of the k8s worker nodes are created
+  - name: Add labels on Kubernetes node k8s-cp
+    kubernetes.core.k8s:
+      state: patched
+      kind: Node
+      name: k8s-cp
+      definition:
+        metadata:
+          labels:
+            wl: cp
+
+  - name: Add labels on Kubernetes node k8s-w1
+    kubernetes.core.k8s:
+      state: patched
+      kind: Node
+      name: k8s-w1
+      definition:
+        metadata:
+          labels:
+            wl: es-data
+
+  - name: Add labels on Kubernetes node k8s-w2
+    kubernetes.core.k8s:
+      state: patched
+      kind: Node
+      name: k8s-w2
+      definition:
+        metadata:
+          labels:
+            wl: es-data
+
+  - name: Add labels on Kubernetes node k8s-w3
+    kubernetes.core.k8s:
+      state: patched
+      kind: Node
+      name: k8s-w3
+      definition:
+        metadata:
+          labels:
+            wl: es-data

@@ -8,6 +8,7 @@
     cni: "flannel"
     ansible_user: vagrant
     containerd_config_cgroup_driver_systemd: true
+
   tasks:
 
     - name: Kubeconfig path for Vagrant user
@@ -52,6 +53,7 @@
         repo_url: https://prometheus-community.github.io/helm-charts
         force_update: true
         state: present
+      when: prometheus == true
 
     - name: Deploy kube-prometheus-stack Helm chart
       kubernetes.core.helm:
@@ -67,6 +69,7 @@
           alertmanager:
             enabled: false
         state: present
+      when: prometheus == true
 
     - name: Add openEBS chart repo
       kubernetes.core.helm_repository:
@@ -74,6 +77,7 @@
         repo_url: https://openebs.github.io/openebs
         force_update: true
         state: present
+      when: openebs == true
 
     - name: Deploy openEBS Helm chart
       kubernetes.core.helm:
@@ -95,8 +99,12 @@
           alloy:
             enabled: false
         state: present
+      when: openebs == true
 
     - name: Apply openEBS ZFS Storage Class
       kubernetes.core.k8s:
         state: present # Ensures the resource exists and matches the definition
         definition: "{{ lookup('file', 'files/openebs-zfs-sc.yml') | from_yaml }}"
+      when:
+        - openebs == true
+        - app_storageclass == "openebs-zfspv"

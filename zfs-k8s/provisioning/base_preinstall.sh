@@ -70,6 +70,10 @@ fs.file-max=65536
 EOF
 sysctl -p
 
+# Clear yum cache and force metadata refresh
+yum clean all
+yum makecache
+
 # Ansible K8s dependencies
 dnf install -y python3-pip
 pip3 install --upgrade pip

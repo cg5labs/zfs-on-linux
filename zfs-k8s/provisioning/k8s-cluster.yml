@@ -4,7 +4,7 @@
   become: true # This applies to all tasks in this play
   serial: 1
   vars:
-    kubernetes_version: "1.32"
+    kubernetes_version: "1.34"
     cni: "flannel"
     kubernetes_flannel_manifest_file: "/home/vagrant/kube-flannel.yml"
     ansible_user: vagrant
@@ -42,7 +42,7 @@
   become: true
   vars:
     ansible_user: vagrant
-    kubernetes_version: "1.32"
+    kubernetes_version: "1.34"
     containerd_config_cgroup_driver_systemd: true
   pre_tasks:
     - name: Disable swap immediately
@@ -55,7 +55,7 @@
         replace: '# \1swap\2'
 
   roles:
-    #- cg5labs.zfs
+    - cg5labs.zfs
     - cg5labs.firewalld
     - geerlingguy.ntp
     - geerlingguy.containerd

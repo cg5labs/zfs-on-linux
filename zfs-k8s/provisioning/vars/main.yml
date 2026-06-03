@@ -2,3 +2,9 @@
 workspace: /root
 hostname: ntp
 ntp_timezone: Asia/Singapore
+prometheus: false
+openebs: false
+eck_cluster: false
+
+app_storageclass: "openebs-hostpath"
+#app_storageclass: "openebs-zfspv"
