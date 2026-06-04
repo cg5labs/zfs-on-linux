@@ -20,7 +20,7 @@ Features
 
 - Vagrant
 - Libvirt / qemu 
-- Virtualbox (todo)
+- Virtualbox (WIP)
   
 ## Setup
 Ansible needs to be installed on the host for Vagrant to install dependencies during startup.
@@ -39,3 +39,14 @@ Vagrant VM startup needs to be sequential for the K8s control plane VM to intial
 $ cd zfs-k8s
 $ vagrant up --no-parallel
 ```
+
+The Vagrant VMs for the K8s cluster default settings have this sizing and require sufficient resources on the host:
+
+| VM     | CPU [#] | RAM [gb]  | Disk [gb] | Description    |
+|:-------|:--------|:----------|-----------|----------------|
+| k8s-cp | 4       | 8         | 10        | Control Plane  |
+| k8s-w1 | 4       | 8         | 250       | Worker Node    |
+| k8s-w2 | 4       | 8         | 250       | Worker Node    |
+| k8s-w3 | 4       | 8         | 250       | Worker Node    |
+
+
